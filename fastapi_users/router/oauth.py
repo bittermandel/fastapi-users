@@ -101,7 +101,13 @@ def get_oauth_router(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
         if oauth_client.name == "discord":
-            user_id = decode_state_token(request.headers["authorization"].split(" ")[1], state_secret)["user_id"]
+            user_id = jwt.decode(
+                request.headers["authorization"].split(" ")[1],
+                state_secret,
+                audience="fastapi-users:auth",
+                algorithms=["HS256"],
+                options={"verify_signature": False}
+            )
             user = await user_db.get_by_id(user_id)
             account_id = str(user.id)
             account_email = str(user.email)
