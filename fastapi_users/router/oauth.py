@@ -106,7 +106,6 @@ def get_oauth_router(
                 state_secret,
                 audience="fastapi-users:auth",
                 algorithms=["HS256"],
-                options={"verify_signature": False}
             )
             user = await user_db.get_by_id(user_id)
             account_id = str(user.id)
