@@ -94,16 +94,28 @@ def get_oauth_router(
         access_token_state=Depends(oauth2_authorize_callback),
     ):
         token, state = access_token_state
-        account_id, account_email = await oauth_client.get_id_email(
-            token["access_token"]
-        )
 
         try:
             state_data = decode_state_token(state, state_secret)
         except jwt.DecodeError:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
-        user = await user_db.get_by_oauth_account(oauth_client.name, account_id)
+        if oauth_client.name == "discord":
+            user_id = jwt.decode(
+                request.headers["authorization"].split(" ")[1],
+                state_secret,
+                audience="fastapi-users:auth",
+                algorithms=["HS256"],
+            )["user_id"]
+            user = await user_db.get_by_id(user_id)
+            account_id = str(user.id)
+            account_email = str(user.email)
+
+        else:
+
+            account_id, account_email = await oauth_client.get_id_email(token["access_token"])
+
+            user = await user_db.get_by_oauth_account(oauth_client.name, account_id)
 
         new_oauth_account = models.BaseOAuthAccount(
             oauth_name=oauth_client.name,
@@ -134,10 +146,9 @@ def get_oauth_router(
         else:
             # Update oauth
             updated_oauth_accounts = []
+            updated_oauth_accounts.append(new_oauth_account)
             for oauth_account in user.oauth_accounts:  # type: ignore
-                if oauth_account.account_id == account_id:
-                    updated_oauth_accounts.append(new_oauth_account)
-                else:
+                if oauth_account.account_id != new_oauth_account.account_id:
                     updated_oauth_accounts.append(oauth_account)
             user.oauth_accounts = updated_oauth_accounts  # type: ignore
             await user_db.update(user)
@@ -151,8 +162,6 @@ def get_oauth_router(
         # Authenticate
         for backend in authenticator.backends:
             if backend.name == state_data["authentication_backend"]:
-                return await backend.get_login_response(
-                    cast(models.BaseUserDB, user), response
-                )
+                return await backend.get_login_response(cast(models.BaseUserDB, user), response)
 
     return router

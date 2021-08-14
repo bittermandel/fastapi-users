@@ -22,6 +22,10 @@ class BaseUserDatabase(Generic[UD]):
     async def get(self, id: UUID4) -> Optional[UD]:
         """Get a single user by id."""
         raise NotImplementedError()
+    
+    async def get_by_id(self, id: UUID4) -> Optional[UD]:
+        """Get a single user by id."""
+        raise NotImplementedError()
 
     async def get_by_email(self, email: str) -> Optional[UD]:
         """Get a single user by email."""
