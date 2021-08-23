@@ -107,8 +107,9 @@ def get_oauth_router(
                 audience="fastapi-users:auth",
                 algorithms=["HS256"],
             )["user_id"]
+            
             user = await user_db.get_by_id(user_id)
-            account_id = str(user.id)
+            account_id, _ = await oauth_client.get_id_email(token["access_token"])
             account_email = str(user.email)
 
         else:
